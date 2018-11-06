@@ -1,16 +1,6 @@
----
-title: "Drawing Interactive Maps in R"
-author: "Xinyuan Cao (xc2461)"
-output:
-  html_document:
-    df_print: paged
-    toc: yes
-  html_notebook:
-    toc: yes
-    toc_float: yes
-editor_options:
-  chunk_output_type: console
----
+# Drawing Interactive Maps in R
+> author: "Xinyuan Cao (xc2461)
+
 
 
 While static and maps can enliven geographic data, interactive maps can take them to a new level. Interactivity can have many different functions and forms. We can pan around and zoom into any part of a geographic dataset overlaid on a map to show the context. We can also tilt and rotate maps freely to have a better view. The release of the leaflet package in 2015 revolutionized interactive web map creation from within R and a number of packages have built on these foundations adding new features (e.g. leaflet.extras) and making the creation of web maps as simple as creating static maps. Here we'll introduce two packages `leaflet` and `plotly` in drawing maps so as to provide powerful tools when we need to interactively processing geo-data.
