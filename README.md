@@ -6,4 +6,4 @@
 
 - Click [tutorial.Rmd](https://github.com/youki-cao/Drawing-Interactive-Maps-in-R/blob/master/tutorial.Rmd) for the `Rmd` file.
 
-- Hope you have fun plotting with these powerful interactive tools : )
+- Hope you have fun plotting these powerful interactive tools : )
