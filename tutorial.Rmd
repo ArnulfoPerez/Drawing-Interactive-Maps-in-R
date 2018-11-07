@@ -13,6 +13,7 @@ editor_options:
 ---
 
 
+
 While static and maps can enliven geographic data, interactive maps can take them to a new level. Interactivity can have many different functions and forms. We can pan around and zoom into any part of a geographic dataset overlaid on a map to show the context. We can also tilt and rotate maps freely to have a better view. The release of the leaflet package in 2015 revolutionized interactive web map creation from within R and a number of packages have built on these foundations adding new features (e.g. leaflet.extras) and making the creation of web maps as simple as creating static maps. Here we'll introduce two packages `leaflet` and `plotly` in drawing maps so as to provide powerful tools when we need to interactively processing geo-data.
 
 
@@ -28,14 +29,14 @@ For more information on `rstudio/leaflet`, see [rstudio.github.io/leaflet/](rstu
 ## Installation
 
 To install this R package, run this command at your R prompt:
-```{r cache=TRUE}
+```{r, warning = FALSE, message = FALSE}
 devtools::install_github("rstudio/leaflet")
-# or you can directly use
+# or you can use
 # install.packages("leaflet")
 ```
 
 ## Basic Usage
-### A simple Example
+### A Simple Example
 There are four steps to create a Leaflet map:
 
 1. Create a map widget by calling leaflet().
@@ -45,7 +46,8 @@ There are four steps to create a Leaflet map:
 
 ```{r}
 library(leaflet)
-
+```
+```{r}
 ex1 <- leaflet() %>%
   addTiles() %>%  # Add default OpenStreetMap map tiles
   addMarkers(lng = -73.9626, lat = 40.8075, popup = "Columbia University")
@@ -131,7 +133,7 @@ We can add icon markers to locate some particular places. Here we want to mark a
 Here, to have a better view of the where the area we are looking at is, we use `addMiniMap` to have a mini-map in the corner. And the square inside shows the showing part of the big map is in what part of the whole country.
 
 ```{r}
-subway.df <- read.csv("SUBWAY_STATION.csv")
+subway.df <- read.csv("data/SUBWAY_STATION.csv")
 print(subway.df[c(1: 5), ]) # show the data of nyc subway stations
 
 ex6 <- leaflet(subway.df) %>%
@@ -198,13 +200,15 @@ I'll use the census data, and filter those states in the east coast. Here we add
 
 For legend, usually we use the `addLegend` function to add a legend. The easiest way to use `addLegend` is to provide `pal` (a palette function, as generated from `colorNumeric` et al.) and `values`, and let it calculate the colors and labels for you.
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 library(sp)
 library(tidyverse)
 library(raster)
 library(rgdal)
+```
+```{r}
 # From https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html
-states <- readOGR("cb_2017_us_state_20m/cb_2017_us_state_20m.shp",
+states <- readOGR("data/cb_2017_us_state_20m/cb_2017_us_state_20m.shp",
   layer = "cb_2017_us_state_20m", GDAL1_integer64_policy = TRUE)
 
 neStates <- subset(states, states$STUSPS %in% c(
@@ -222,7 +226,7 @@ ex10 <-leaflet(neStates) %>%
   highlightOptions = highlightOptions(color = "white", weight = 2,
   bringToFront = TRUE)) %>%
   addLegend(pal = palette, values = ~ALAND, position="bottomright",
-            title = "US Census (East Coast)") 
+            title = "2017 US Land Areas (East Coast)") 
 ex10
 ```
 
@@ -231,15 +235,143 @@ ex10
 
 
 # Plotting with `plotly`
+
+Plotly's R graphing library makes interactive, publication-quality graphs online. Here we give examples and instructions of some very fancy graphs.
+
 ## Installation
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 devtools::install_github("ropensci/plotly")
 # or you can directly use
 # install.packages("plotly")
 # Plotly is now on CRAN!
 ```
 
+
+## Choropleth Maps
+
+Here we want to use the same data when plotting us census plot above by `leaflet`, and make a comparison.
+
+```{r, warning = FALSE, message = FALSE}
+library(plotly)
+```
+
+```{r}
+census.df <- neStates@data
+# create the text when mouse move to the corresponding county
+census.df$hover <- with(census.df, paste(NAME, "<br>",
+                           "AWATER", AWATER))
+# give state boundaries a white border
+l <- list(color = toRGB("white"), width = 2)
+# specify some map projection/options
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white'))
+
+ex11 <- plot_geo(census.df, locationmode = 'USA-states') %>%
+  add_trace(
+    z = ~ALAND, text = ~hover, locations = ~STUSPS,
+    color = ~ALAND, colors = 'Oranges') %>%
+  layout(
+    title = '2017 US Land Areas (East Coast)',
+    geo = g)
+ex11
+```
+We can see that `plotly`'s plots have a line of small buttons in the top-right corner, with functions like download, pan, select, zoom, box select, etc. These serve as very good interactive tools. And for the grammer, it works quite similar to `leaflet`. And the graph shows the same result as the previous one. So feel free to choose packages when plotting choropleth maps.
+
+
+## Lines on Maps
+
+If you want to show flights across or within countries in the plots, `plotly` provides convenient tools to visualize lines, circles or even contours. Here we give two examples.
+
+### Flight Paths Map
+We use the data of flights from the official tutorial of `plotly`, which is the data of Feb 2011. Our goal is to visualize the flight paths in the map. Here we draw circle to deonte the airports using `add_markers`. Also we draw lines from the start location to the end location using `add_segments`.
+
+```{r}
+# airport locations
+air <- read.csv('https://raw.githubusercontent.com/plotly/datasets/master/2011_february_us_airport_traffic.csv')
+# flights between airports
+flights <- read.csv('https://raw.githubusercontent.com/plotly/datasets/master/2011_february_aa_flight_paths.csv')
+flights$id <- seq_len(nrow(flights))
+
+# map projection
+geo <- list(
+  scope = 'north america',
+  projection = list(type = 'azimuthal equal area'),
+  showland = TRUE,
+  landcolor = toRGB("gray95"),
+  countrycolor = toRGB("gray80")
+)
+
+ex12 <- plot_geo(locationmode = 'USA-states', color = I("red")) %>%
+  add_markers(
+    data = air, x = ~long, y = ~lat, text = ~airport,
+    size = ~cnt, hoverinfo = "text", alpha = 0.5) %>%
+  add_segments(
+    data = group_by(flights, id),
+    x = ~start_lon, xend = ~end_lon,
+    y = ~start_lat, yend = ~end_lat,
+    alpha = 0.3, size = I(1), hoverinfo = "none") %>%
+  layout(
+    title = 'Feb. 2011 American Airline Flight Paths',
+    geo = geo, showlegend = FALSE)
+
+ex12
+```
+
+
+### Contour Lines on Globe
+Finally I'll show the fancy 3-D interactive contour lines on globe. You can click and drag to rotate so as to have an overall view all over the world. 
+
+```{r, warning=FALSE, message = FALSE}
+df <- read.csv('https://raw.githubusercontent.com/plotly/datasets/master/globe_contours.csv')
+df$id <- seq_len(nrow(df))
+
+d <- df %>%
+  gather(key, value, -id) %>%
+  separate(key, c("l", "line"), "\\.") %>%
+  spread(l, value)
+
+geo <- list(
+  showland = TRUE,
+  showlakes = TRUE,
+  showcountries = TRUE,
+  showocean = TRUE,
+  countrywidth = 0.5,
+  landcolor = toRGB("grey90"),
+  lakecolor = toRGB("white"),
+  oceancolor = toRGB("white"),
+  projection = list(
+    type = 'orthographic',
+    rotation = list(
+      lon = -100,
+      lat = 40,
+      roll = 0
+    )
+  ),
+  lonaxis = list(
+    showgrid = TRUE,
+    gridcolor = toRGB("gray40"),
+    gridwidth = 0.5
+  ),
+  lataxis = list(
+    showgrid = TRUE,
+    gridcolor = toRGB("gray40"),
+    gridwidth = 0.5
+  )
+)
+
+ex13 <- plot_geo(d) %>%
+  group_by(line) %>%
+  add_lines(x = ~lon, y = ~lat) %>%
+  layout(
+    showlegend = FALSE, geo = geo,
+    title = 'Contour Lines Over Globe'
+  )
+ex13
+```
 
 
 
@@ -249,6 +381,10 @@ Reference:
 2. http://rstudio.github.io/leaflet/
 3. https://geocompr.robinlovelace.net/adv-map.html#interactive-maps
 4. https://plot.ly/r/maps/
+5. https://www.rdocumentation.org/packages/plotly/versions/4.8.0/
+6. https://bhaskarvk.github.io/user2017.geodataviz/notebooks/03-Interactive-Maps.nb.html#using_ggiraph
+
+
 
 
 
